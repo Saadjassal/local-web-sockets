@@ -56,7 +56,6 @@ try:
         if events:
             for key, mask in events:
                 service_connection(key, mask)
-        # Check for a socket being monitored to continue.
         if not sel.get_map():
             break
 except KeyboardInterrupt:
