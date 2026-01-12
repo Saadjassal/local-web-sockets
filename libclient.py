@@ -5,19 +5,35 @@ import struct
 import sys
 
 
-class Message:
+class Message: 
+    """This class represents one TCP connection
+    it stores:
+    socket
+    buffers
+    protocol state
+    request/response logic"""
     def __init__(self, selector, sock, addr, request):
         self.selector = selector
         self.sock = sock
         self.addr = addr
         self.request = request
+        #internal state Variable
         self._recv_buffer = b""
         self._send_buffer = b""
+        
+        #ensure the request is sent only once 
         self._request_queued = False
+        
+        """These track protocol parsing progress:
+            Read header length
+            Read JSON header
+            Read body
+            This is a state machine"""
         self._jsonheader_len = None
         self.jsonheader = None
         self.response = None
-
+        
+        #Control what events the selector listens for 
     def _set_selector_events_mask(self, mode):
         """Set selector to listen for events: mode is 'r', 'w', or 'rw'."""
         if mode == "r":
@@ -35,7 +51,7 @@ class Message:
             # Should be ready to read
             data = self.sock.recv(4096)
         except BlockingIOError:
-            # Resource temporarily unavailable (errno EWOULDBLOCK)
+            # Resource temporarily unavailable so pass without blocking
             pass
         else:
             if data:
@@ -50,7 +66,7 @@ class Message:
                 # Should be ready to write
                 sent = self.sock.send(self._send_buffer)
             except BlockingIOError:
-                # Resource temporarily unavailable (errno EWOULDBLOCK)
+                # Resource temporarily unavailable
                 pass
             else:
                 self._send_buffer = self._send_buffer[sent:]
@@ -134,7 +150,6 @@ class Message:
         except OSError as e:
             print(f"Error: socket.close() exception for {self.addr}: {e!r}")
         finally:
-            # Delete reference to socket object for garbage collection
             self.sock = None
 
     def queue_request(self):
